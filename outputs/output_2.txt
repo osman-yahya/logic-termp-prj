@@ -1,0 +1,24 @@
+Model: UNSAT (No satisfiable assignment found)
+
+(Row form skipped for UNSAT result)
+
+========================================
+
+C1 | A + B
+C2 | -A
+C3 | -B
+---------- Unit L=-1
+C1 | B
+C3 | -B
+---------- Unit L=-2
+C1 | 0 | Conflict
+
+========================================
+
+Root
+|
+|----- Unit A = 0
+|
+|----- Unit B = 0
+|
+|----- Conflict!
