@@ -44,15 +44,16 @@ TREE FORM - SEARCH TREE
 Root
 |
 |----- Decide B = 1
-|     
-|     ----- Unit C = 0
-|     
-|     ----- Conflict!
+|          |
+|          |----- Assign C = 0
+|          |
+|          |----- Conflict!
+|
 |
 |----- Decide B = 0
-|     
-|     ----- Unit A = 0
-|     
-|     ----- Unit C = 1
-|     
-|     ----- Satisfied!
+           |
+           |----- Unit A = 0
+           |
+           |----- Unit C = 1
+           |
+           |----- Satisfied!

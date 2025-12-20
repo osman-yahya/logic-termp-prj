@@ -10,10 +10,17 @@ import re
 from typing import Dict, List, Tuple, Set
 from collections import defaultdict
 
+CNF_FILE = "exp_6/initial_cnf.txt"
+MODEL_FILE = "exp_6/final_model.txt"
+TRACE_FILES = ["exp_6/execution_trace1.txt","exp_6/execution_trace2.txt"]  # Add more files if needed
+OUTPUT_FILE = "exp_6/visualization_output.txt"
+
+""" 
 CNF_FILE = "initial_cnf.txt"
 MODEL_FILE = "final_model.txt"
 TRACE_FILES = ["execution_trace1.txt","execution_trace2.txt"]  # Add more files if needed
-OUTPUT_FILE = "visualization_output.txt"
+OUTPUT_FILE = "visualization_output.txt" 
+""" 
 
 
 class SATVisualizer:
@@ -100,7 +107,7 @@ class SATVisualizer:
                 content = f.read()
             
             # Check STATUS
-            status_match = re.search(r'STATUS:\s*(SAT|UNSAT)', content)
+            status_match = re.search(r'STATUS:\s*(SAT|UNSAT|CONTINUE)', content)
             status = status_match.group(1) if status_match else None
             
             # Extract BCP execution log
@@ -112,20 +119,43 @@ class SATVisualizer:
             
             if log_section:
                 log_lines = log_section.group(1).strip().split('\n')
-                trace_segment = [line.strip() for line in log_lines if line.strip()]
+                trace_segment = []
+                for line in log_lines:
+                    line = line.strip()
+                    if line:
+                        # Check for SATISFIED lines
+                        if 'SATISFIED' in line:
+                            # Split by | and check what comes after
+                            parts = line.split('|')
+                            if len(parts) >= 2:
+                                # Check if there's a clause ID after the pipe
+                                after_pipe = parts[-1].strip()  # Get last part after split
+                                if after_pipe and after_pipe.startswith('C'):
+                                    # Clause-level SATISFIED (e.g., "| C2"), skip it
+                                    continue
+                            # Formula-level SATISFIED (no clause after |, or just |)
+                            trace_segment.append(line)
+                        else:
+                            trace_segment.append(line)
+                
+                # If this is a SAT trace but no formula-level SATISFIED was found, add one
+                if status == 'SAT' and trace_segment:
+                    # Check if there's already a SATISFIED in the trace
+                    has_satisfied = any('SATISFIED' in line for line in trace_segment)
+                    if not has_satisfied:
+                        # Add a synthetic SATISFIED marker
+                        trace_segment.append('[DL1] SATISFIED |')
                 
                 if status == 'SAT':
                     sat_traces.append(trace_segment)
                 elif status == 'UNSAT':
                     unsat_traces.append(trace_segment)
+                elif status == 'CONTINUE':
+                    continue
         
-        # Use the SAT trace if available (contains complete successful execution)
-        # If no SAT trace, use UNSAT traces (all failed attempts)
         if sat_traces:
-            # The SAT trace should contain the complete execution
-            self.trace = sat_traces[0]  # There should typically be only one SAT trace
+            self.trace = sat_traces[0]
         elif unsat_traces:
-            # If only UNSAT, concatenate all failed attempts
             self.trace = []
             for trace in unsat_traces:
                 self.trace.extend(trace)
@@ -163,36 +193,50 @@ class SATVisualizer:
         for clause_id in sorted(self.clauses.keys()):
             literals = self.clauses[clause_id]
             
-            # Create position mapping for all variables (A, B, C, etc.)
+            # Create position mapping for all variables
             num_vars = len(self.variables)
-            positions = ['    '] * num_vars  # 4 spaces for empty positions
-            values = ['   '] * num_vars  # 3 spaces for empty values
+            signs = []
+            values = []
             
-            for lit in literals:
-                var_id = abs(lit)
-                var_value = self.model.get(var_id, False)
-                position_idx = var_id - 1  # 1->0, 2->1, 3->2
+            for var_id in range(1, num_vars + 1):
+                # Check if this variable appears in the clause
+                var_in_clause = False
+                for lit in literals:
+                    if abs(lit) == var_id:
+                        var_value = self.model.get(var_id, False)
+                        
+                        # Add sign
+                        if lit < 0:
+                            signs.append('-')
+                            eval_value = 1 if not var_value else 0
+                        else:
+                            signs.append('+')
+                            eval_value = 1 if var_value else 0
+                        
+                        values.append(eval_value)
+                        var_in_clause = True
+                        break
                 
-                # Set sign
-                if lit < 0:
-                    positions[position_idx] = '-   '  # negative with padding
-                    eval_value = 1 if not var_value else 0
-                else:
-                    positions[position_idx] = '+   '  # positive with padding
-                    eval_value = 1 if var_value else 0
-                
-                values[position_idx] = f'{eval_value}   '
+                if not var_in_clause:
+                    # Variable not in this clause - add spacing
+                    signs.append(' ')
+                    values.append(None)
             
-            # Build strings
-            signs_str = ''.join(positions).rstrip()
-            values_list = [v.strip() for v in values if v.strip()]
+            # Format output with proper spacing
+            signs_str = '   '.join(signs)  # 3 spaces between each position
+            values_list = []
+            for v in values:
+                if v is not None:
+                    values_list.append(str(v))
+            
             values_str = ' + '.join(values_list)
-            total = 1 if sum(int(v.strip()) for v in values if v.strip()) > 0 else 0
+            total = 1 if sum(v for v in values if v is not None) > 0 else 0
             
             output.append(f"{clause_id} | {signs_str} | {values_str} = {total}")
         
         output.append("")
         return "\n".join(output)
+
 
     def generate_inference_form(self) -> str:
         """Generate Inference Form visualization"""
@@ -220,7 +264,6 @@ class SATVisualizer:
                 if match:
                     literal = int(match.group(1))
                     var_id = abs(literal)
-                    var_name = self.variables.get(var_id, f"V{var_id}")
                     output.append(f"---------- Decision L={literal}")
                     assignments[var_id] = literal > 0
                     simplified = self._show_simplified_clauses(assignments)
@@ -253,11 +296,12 @@ class SATVisualizer:
                 output.append("")
             
             elif 'SATISFIED' in step:
+                # Only add "Satisfied" once for formula-level satisfaction
                 output.append("Satisfied")
                 output.append("")
+                break  # Stop processing after formula is satisfied
         
         return "\n".join(output)
-
 
      
     def _format_clause(self, literals: List[int], assignments: Dict[int, bool]) -> str:
@@ -325,11 +369,11 @@ class SATVisualizer:
         output.append("")
         output.append("Root")
         
-        # Parse trace to build tree structure
-        current_depth = 0
-        decision_stack = []
+        # Track state
+        after_decide = False
+        in_failed_branch = False
         
-        for step in self.trace:
+        for i, step in enumerate(self.trace):
             if 'DECIDE' in step:
                 match = re.search(r'L=(-?\d+)', step)
                 if match:
@@ -338,11 +382,19 @@ class SATVisualizer:
                     var_name = self.variables.get(var_id, f"V{var_id}")
                     value = 1 if literal > 0 else 0
                     
-                    current_depth += 1
-                    prefix = "|" + "\n|".join(["     "] * (current_depth - 1))
-                    output.append(f"{prefix}")
-                    output.append(f"{prefix}----- Decide {var_name} = {value}")
-                    decision_stack.append(current_depth)
+                    # Check if this decision will lead to conflict
+                    will_conflict = False
+                    for future_step in self.trace[i+1:]:
+                        if 'CONFLICT' in future_step:
+                            will_conflict = True
+                            break
+                        if 'BACKTRACK' in future_step or 'SATISFIED' in future_step:
+                            break
+                    
+                    output.append("|")
+                    output.append("|----- Decide {0} = {1}".format(var_name, value))
+                    after_decide = True
+                    in_failed_branch = will_conflict
             
             elif 'UNIT' in step and 'ASSIGN' not in step:
                 match = re.search(r'L=(-?\d+)', step)
@@ -352,27 +404,31 @@ class SATVisualizer:
                     var_name = self.variables.get(var_id, f"V{var_id}")
                     value = 1 if literal > 0 else 0
                     
-                    prefix = "|" + "\n|".join(["     "] * current_depth)
-                    output.append(f"{prefix}")
-                    output.append(f"{prefix}----- Unit {var_name} = {value}")
+                    if in_failed_branch:
+                        # Failed branch uses |          | format
+                        output.append("|          |")
+                        output.append("|          |----- Assign {0} = {1}".format(var_name, value))
+                    else:
+                        # Successful branch uses            | format (11 spaces)
+                        output.append("           |")
+                        output.append("           |----- Unit {0} = {1}".format(var_name, value))
             
             elif 'CONFLICT' in step:
-                prefix = "|" + "\n|".join(["     "] * current_depth)
-                output.append(f"{prefix}")
-                output.append(f"{prefix}----- Conflict!")
+                output.append("|          |")
+                output.append("|          |----- Conflict!")
             
             elif 'BACKTRACK' in step:
-                if decision_stack:
-                    current_depth = decision_stack.pop() - 1
+                output.append("|")
+                after_decide = False
+                in_failed_branch = False
             
             elif 'SATISFIED' in step:
-                prefix = "|" + "\n|".join(["     "] * current_depth)
-                output.append(f"{prefix}")
-                output.append(f"{prefix}----- Satisfied!")
+                output.append("           |")
+                output.append("           |----- Satisfied!")
+                break
         
         output.append("")
         return "\n".join(output)
-    
     def visualize(self, cnf_file: str, model_file: str, trace_files: List[str], output_file: str):
         """Main function to generate all visualizations"""
         # Parse inputs
