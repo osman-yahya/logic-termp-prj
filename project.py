@@ -10,10 +10,17 @@ import re
 from typing import Dict, List, Tuple, Set
 from collections import defaultdict
 
-CNF_FILE = "exp_6/initial_cnf.txt"
-MODEL_FILE = "exp_6/final_model.txt"
-TRACE_FILES = ["exp_6/execution_trace1.txt","exp_6/execution_trace2.txt"]  # Add more files if needed
-OUTPUT_FILE = "exp_6/visualization_output.txt"
+# For any experiment, below 2 const vars are enough to set.
+FILE_ROOT = "exp_o1"
+TRACE_COUNT = 1
+
+
+
+
+CNF_FILE = FILE_ROOT + "/initial_cnf.txt"
+MODEL_FILE = FILE_ROOT + "/final_model.txt"
+TRACE_FILES = [FILE_ROOT+f"/execution_trace{x}.txt" for x in range(1,TRACE_COUNT+1) ]  
+OUTPUT_FILE = FILE_ROOT + "/visualization_output.txt"
 
 """ 
 CNF_FILE = "initial_cnf.txt"
@@ -369,8 +376,8 @@ class SATVisualizer:
         output.append("")
         output.append("Root")
         
-        # Track state
-        after_decide = False
+        # Track decision level
+        decision_level = 0
         in_failed_branch = False
         
         for i, step in enumerate(self.trace):
@@ -391,10 +398,18 @@ class SATVisualizer:
                         if 'BACKTRACK' in future_step or 'SATISFIED' in future_step:
                             break
                     
-                    output.append("|")
-                    output.append("|----- Decide {0} = {1}".format(var_name, value))
-                    after_decide = True
+                    decision_level += 1
                     in_failed_branch = will_conflict
+                    
+                    # Add proper indentation based on decision level
+                    if decision_level == 1:
+                        output.append("|")
+                        output.append("|----- Decide {0} = {1}".format(var_name, value))
+                    else:
+                        # For nested decisions
+                        indent = " " * (11 * (decision_level - 1))
+                        output.append(indent + "|")
+                        output.append(indent + "|----- Decide {0} = {1}".format(var_name, value))
             
             elif 'UNIT' in step and 'ASSIGN' not in step:
                 match = re.search(r'L=(-?\d+)', step)
@@ -404,31 +419,33 @@ class SATVisualizer:
                     var_name = self.variables.get(var_id, f"V{var_id}")
                     value = 1 if literal > 0 else 0
                     
+                    # Calculate indentation based on decision level
+                    indent = " " * (11 * decision_level)
+                    
                     if in_failed_branch:
-                        # Failed branch uses |          | format
                         output.append("|          |")
                         output.append("|          |----- Assign {0} = {1}".format(var_name, value))
                     else:
-                        # Successful branch uses            | format (11 spaces)
-                        output.append("           |")
-                        output.append("           |----- Unit {0} = {1}".format(var_name, value))
+                        output.append(indent + "|")
+                        output.append(indent + "|----- Unit {0} = {1}".format(var_name, value))
             
             elif 'CONFLICT' in step:
                 output.append("|          |")
                 output.append("|          |----- Conflict!")
             
             elif 'BACKTRACK' in step:
-                output.append("|")
-                after_decide = False
+                decision_level = 0
                 in_failed_branch = False
             
             elif 'SATISFIED' in step:
-                output.append("           |")
-                output.append("           |----- Satisfied!")
+                indent = " " * (11 * decision_level)
+                output.append(indent + "|")
+                output.append(indent + "|----- Satisfied!")
                 break
         
         output.append("")
         return "\n".join(output)
+
     def visualize(self, cnf_file: str, model_file: str, trace_files: List[str], output_file: str):
         """Main function to generate all visualizations"""
         # Parse inputs
