@@ -110,36 +110,38 @@ class SATVisualizer:
         for clause_id in sorted(self.clauses.keys()):
             literals = self.clauses[clause_id]
             
-            # Build representation
-            signs = []
-            values = []
+            # Create position mapping for all variables (A, B, C, etc.)
+            num_vars = len(self.variables)
+            positions = ['    '] * num_vars  # 4 spaces for empty positions
+            values = ['   '] * num_vars  # 3 spaces for empty values
             
             for lit in literals:
                 var_id = abs(lit)
                 var_value = self.model.get(var_id, False)
+                position_idx = var_id - 1  # 1->0, 2->1, 3->2
                 
-                # Determine sign and evaluation
+                # Set sign
                 if lit < 0:
-                    signs.append('-')
-                    # Negated literal: TRUE if variable is FALSE
+                    positions[position_idx] = '-   '  # negative with padding
                     eval_value = 1 if not var_value else 0
                 else:
-                    signs.append('+')
-                    # Positive literal: TRUE if variable is TRUE
+                    positions[position_idx] = '+   '  # positive with padding
                     eval_value = 1 if var_value else 0
                 
-                values.append(str(eval_value))
+                values[position_idx] = f'{eval_value}   '
             
-            # Format output
-            signs_str = ' '.join(signs)
-            values_str = ' + '.join(values)
-            total = sum(int(v) for v in values)
+            # Build strings
+            signs_str = ''.join(positions).rstrip()
+            values_list = [v.strip() for v in values if v.strip()]
+            values_str = ' + '.join(values_list)
+            total = 1 if sum(int(v.strip()) for v in values if v.strip()) > 0 else 0
             
             output.append(f"{clause_id} | {signs_str} | {values_str} = {total}")
         
         output.append("")
         return "\n".join(output)
-    
+
+
     def generate_inference_form(self) -> str:
         """Generate Inference Form visualization"""
         output = []
@@ -182,11 +184,11 @@ class SATVisualizer:
                     output.append(self._show_simplified_clauses(assignments))
             
             elif 'CONFLICT' in step:
-                # Find conflicting clause
-                match = re.search(r'C(\d+)', step)
-                if match:
-                    conflict_clause = f"C{match.group(1)}"
-                    output.append(f"{conflict_clause} | 0 | Conflict")
+                # The conflict clause is already shown in the previous simplified output
+                # Just add the conflict marker to the last line
+                if output and output[-1].strip() and '|' in output[-1]:
+                    # Append " | Conflict" to the last clause line
+                    output[-1] = output[-1] + " | Conflict"
                 output.append("")
             
             elif 'BACKTRACK' in step:
@@ -206,57 +208,33 @@ class SATVisualizer:
             var_id = abs(lit)
             var_name = self.variables.get(var_id, f"V{var_id}")
             
-            # Check if assigned
+            # Check if assigned - if assigned and makes literal true, clause is satisfied
             if var_id in assignments:
                 var_value = assignments[var_id]
-                if lit < 0:
-                    # Negated: TRUE if var is FALSE
-                    if not var_value:
-                        continue  # Clause is satisfied, skip
-                    else:
-                        continue  # This literal is false, skip
-                else:
-                    # Positive: TRUE if var is TRUE
-                    if var_value:
-                        continue  # Clause is satisfied, skip
-                    else:
-                        continue  # This literal is false, skip
-            
-            # Format literal
-            if lit < 0:
-                parts.append(f"-{var_name}")
+                if (lit > 0 and var_value) or (lit < 0 and not var_value):
+                    # This literal is TRUE, clause is satisfied - return empty to signal satisfaction
+                    return ""
+                # Literal is FALSE, skip it (don't add to parts)
             else:
-                parts.append(var_name)
-        
+                # Not assigned yet, include in clause
+                if lit < 0:
+                    parts.append(f"-{var_name}")
+                else:
+                    parts.append(var_name)
         return " + ".join(parts) if parts else "0"
-    
+
     def _show_simplified_clauses(self, assignments: Dict[int, bool]) -> str:
         """Show simplified clauses after assignments"""
         result = []
         for clause_id in sorted(self.clauses.keys()):
             literals = self.clauses[clause_id]
+            clause_str = self._format_clause(literals, assignments)
             
-            # Check if clause is satisfied
-            satisfied = False
-            remaining = []
-            
-            for lit in literals:
-                var_id = abs(lit)
-                if var_id in assignments:
-                    var_value = assignments[var_id]
-                    if (lit > 0 and var_value) or (lit < 0 and not var_value):
-                        satisfied = True
-                        break
-                    # Otherwise literal is false, don't include
-                else:
-                    remaining.append(lit)
-            
-            # Only show unsatisfied clauses
-            if not satisfied:
-                clause_str = self._format_clause_simple(remaining)
+            # Empty string means clause is satisfied, don't show it
+            if clause_str != "":
                 result.append(f"{clause_id} | {clause_str}")
         
-        return "\n".join(result) if result else ""
+        return "\n".join(result) if result else ""   
     
     def _format_clause_simple(self, literals: List[int]) -> str:
         """Simple clause formatting"""
