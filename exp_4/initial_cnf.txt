@@ -1,0 +1,27 @@
+--- 1. HEADER AND METADATA ---
+V: 4
+C: 3
+
+--- 2. VARIABLE ASSIGNMENTS (V-Map) ---
+1    | UNASSIGNED
+2    | UNASSIGNED
+3    | UNASSIGNED
+4    | UNASSIGNED
+
+--- 3. CLAUSE LIST (PREMISES) ---
+[C_ID] | [Literals (Signed Ints)] | [Watched Indices]
+------------------------------------------------------------------
+C1    | [-1, -2, 3]    | [0, 1]
+C2    | [-1, 2, 4]     | [0, 1]
+C3    | [-3, -4]       | [0, 1]
+
+--- 4. 2-WATCHED LITERALS (2WL) MAPPING ---
+[Literal] | [Clauses Watching This Literal]
+-----------------------------------------------
+-1    | [C1, C2]
+2     | [C2]
+-2    | [C1]
+3     | [C1]
+-3    | [C3]
+4     | [C2]
+-4    | [C3]
