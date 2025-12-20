@@ -415,7 +415,28 @@ class SATVisualizer:
 
 def main():
     """Main entry point"""
-    # Example usage
+    
+    print("\n\n\n\nhttps://github.com/osman-yahya/logic-termp-prj\n\n\n\n")
+    print("""
+      ___           ___           ___                                                                                               
+     /\  \         /\  \         /\  \                                                                                              
+    /::\  \       /::\  \        \:\  \                                                                                             
+   /:/\ \  \     /:/\:\  \        \:\  \                                                                                            
+  _\:\~\ \  \   /::\~\:\  \       /::\  \                                                                                           
+ /\ \:\ \ \__\ /:/\:\ \:\__\     /:/\:\__\                                                                                          
+ \:\ \:\ \/__/ \/__\:\/:/  /    /:/  \/__/                                                                                          
+  \:\ \:\__\        \::/  /    /:/  /                                                                                               
+   \:\/:/  /        /:/  /     \/__/                                                                                                
+    \::/  /        /:/  /                                                                                                           
+     \/__/         \/__/                                                                                                            
+
+ _    ___________ __  _____    __    _________   __________ 
+| |  / /  _/ ___// / / /   |  / /   /  _/__  /  / ____/ __ |
+| | / // / \__ \/ / / / /| | / /    / /   / /  / __/ / /_/ /
+| |/ // / ___/ / /_/ / ___ |/ /____/ /   / /__/ /___/ _, _/ 
+|___/___//____/\____/_/  |_/_____/___/  /____/_____/_/ |_|  
+                                                            
+""")
     visualizer = SATVisualizer()
     
     # Specify input files
@@ -429,7 +450,6 @@ def main():
     # Generate visualizations
     visualizer.visualize(cnf_file, model_file, trace_files, output_file)
     
-    print("\nVisualization complete!")
     print("Check 'visualization_output.txt' for results.")
 
 
