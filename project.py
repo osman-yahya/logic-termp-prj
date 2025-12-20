@@ -523,7 +523,7 @@ def main():
     # Generate visualizations
     visualizer.visualize(cnf_file, model_file, trace_files, output_file)
     
-    print("Check 'visualization_output.txt' for results.")
+    
 
 
 if __name__ == "__main__":
