@@ -10,6 +10,11 @@ import re
 from typing import Dict, List, Tuple, Set
 from collections import defaultdict
 
+CNF_FILE = "initial_cnf.txt"
+MODEL_FILE = "final_model.txt"
+TRACE_FILES = ["execution_trace1.txt","execution_trace2.txt"]  # Add more files if needed
+OUTPUT_FILE = "visualization_output.txt"
+
 
 class SATVisualizer:
     """Main class for SAT model visualization"""
@@ -19,21 +24,26 @@ class SATVisualizer:
         self.clauses = {}    # Clause ID to literals mapping
         self.model = {}      # Final variable assignments
         self.trace = []      # Execution trace steps
-        
+
     def parse_initial_cnf(self, filename: str):
         """Parse the initial CNF formula file from Project #2"""
-        with open(filename, 'r') as f:
-            content = f.read()
+        try:
+            with open(filename, 'r') as f:
+                content = f.read()
+        except FileNotFoundError:
+            print(f"Error: {filename} not found")
+            return
         
         # Extract variable count
         v_match = re.search(r'V:\s*(\d+)', content)
         if v_match:
             num_vars = int(v_match.group(1))
-            # Create variable name mapping (1->A, 2->B, 3->C, etc.)
             for i in range(1, num_vars + 1):
-                self.variables[i] = chr(64 + i)  # 65 is 'A'
+                self.variables[i] = chr(64 + i)
+        else:
+            print("Warning: Could not find variable count")
         
-        # Extract clauses from CLAUSE LIST section
+        # Extract clauses
         clause_section = re.search(
             r'--- 3\. CLAUSE LIST.*?---\s*\n\[C_ID\].*?\n-+\n(.*?)(?=---|\Z)', 
             content, 
@@ -44,35 +54,54 @@ class SATVisualizer:
             clause_lines = clause_section.group(1).strip().split('\n')
             for line in clause_lines:
                 if line.strip():
-                    # Parse: C1 | [-1, 2] | [0, 1]
                     parts = line.split('|')
                     if len(parts) >= 2:
                         clause_id = parts[0].strip()
                         literals_str = parts[1].strip()
-                        # Extract integers from brackets
                         literals = [int(x) for x in re.findall(r'-?\d+', literals_str)]
-                        self.clauses[clause_id] = literals
-    
+                        if literals:  # Only add non-empty clauses
+                            self.clauses[clause_id] = literals
+        else:
+            print("Warning: Could not find clause list")        
+   
     def parse_final_model(self, filename: str):
         """Parse the final model file from Project #4"""
-        with open(filename, 'r') as f:
-            content = f.read()
+        try:
+            with open(filename, 'r') as f:
+                content = f.read()
+        except FileNotFoundError:
+            print(f"Error: {filename} not found")
+            return
+        
+        # Check if SAT
+        if 'STATUS: UNSAT' in content:
+            print("Warning: Formula is UNSATISFIABLE - no model exists")
+            return
         
         # Extract variable assignments
         lines = content.split('\n')
         for line in lines:
-            # Parse: 1 | FALSE or 1 | TRUE
             match = re.match(r'(\d+)\s*\|\s*(TRUE|FALSE)', line)
             if match:
                 var_id = int(match.group(1))
                 value = match.group(2) == 'TRUE'
                 self.model[var_id] = value
+        
+        if not self.model:
+            print("Warning: No model assignments found")
     
     def parse_execution_traces(self, filenames: List[str]):
         """Parse and combine multiple execution trace files from Project #3"""
+        sat_traces = []
+        unsat_traces = []
+        
         for filename in filenames:
             with open(filename, 'r') as f:
                 content = f.read()
+            
+            # Check STATUS
+            status_match = re.search(r'STATUS:\s*(SAT|UNSAT)', content)
+            status = status_match.group(1) if status_match else None
             
             # Extract BCP execution log
             log_section = re.search(
@@ -83,13 +112,37 @@ class SATVisualizer:
             
             if log_section:
                 log_lines = log_section.group(1).strip().split('\n')
-                for line in log_lines:
-                    if line.strip():
-                        self.trace.append(line.strip())
-    
+                trace_segment = [line.strip() for line in log_lines if line.strip()]
+                
+                if status == 'SAT':
+                    sat_traces.append(trace_segment)
+                elif status == 'UNSAT':
+                    unsat_traces.append(trace_segment)
+        
+        # Use the SAT trace if available (contains complete successful execution)
+        # If no SAT trace, use UNSAT traces (all failed attempts)
+        if sat_traces:
+            # The SAT trace should contain the complete execution
+            self.trace = sat_traces[0]  # There should typically be only one SAT trace
+        elif unsat_traces:
+            # If only UNSAT, concatenate all failed attempts
+            self.trace = []
+            for trace in unsat_traces:
+                self.trace.extend(trace)
+        else:
+            self.trace = []
+
+
     def generate_row_form(self) -> str:
         """Generate Row Form visualization"""
+        if not self.model:
+            return "Error: No model available (formula may be UNSAT)"
+        
+        if not self.clauses:
+            return "Error: No clauses available"
+        
         output = []
+        
         output.append("=" * 60)
         output.append("ROW FORM - MODEL VERIFICATION")
         output.append("=" * 60)
@@ -313,11 +366,22 @@ class SATVisualizer:
         print("Parsing initial CNF...")
         self.parse_initial_cnf(cnf_file)
         
+        if not self.clauses:
+            print("Error: Failed to parse clauses. Aborting.")
+            return
+        
         print("Parsing final model...")
         self.parse_final_model(model_file)
         
+        if not self.model:
+            print("Error: Failed to parse model. Aborting.")
+            return
+        
         print("Parsing execution traces...")
         self.parse_execution_traces(trace_files)
+        
+        if not self.trace:
+            print("Warning: No execution trace found")
         
         # Generate visualizations
         print("Generating visualizations...")
@@ -342,11 +406,13 @@ def main():
     visualizer = SATVisualizer()
     
     # Specify input files
-    cnf_file = "initial_cnf.txt"
-    model_file = "final_model.txt"
-    trace_files = ["execution_trace1.txt","execution_trace2.txt"]  # Add more files if needed
-    output_file = "visualization_output.txt"
+    cnf_file = CNF_FILE
+    model_file = MODEL_FILE 
+    trace_files = TRACE_FILES # Add more files if needed
+    output_file = OUTPUT_FILE
     
+
+
     # Generate visualizations
     visualizer.visualize(cnf_file, model_file, trace_files, output_file)
     
