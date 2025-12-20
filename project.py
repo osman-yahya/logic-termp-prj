@@ -194,7 +194,6 @@ class SATVisualizer:
         output.append("")
         return "\n".join(output)
 
-
     def generate_inference_form(self) -> str:
         """Generate Inference Form visualization"""
         output = []
@@ -224,7 +223,9 @@ class SATVisualizer:
                     var_name = self.variables.get(var_id, f"V{var_id}")
                     output.append(f"---------- Decision L={literal}")
                     assignments[var_id] = literal > 0
-                    output.append(self._show_simplified_clauses(assignments))
+                    simplified = self._show_simplified_clauses(assignments)
+                    if simplified:
+                        output.append(simplified)
             
             elif 'UNIT' in step and 'ASSIGN' not in step:
                 # Extract literal: [DL1] UNIT L=-3 | C2
@@ -234,7 +235,9 @@ class SATVisualizer:
                     var_id = abs(literal)
                     output.append(f"---------- Unit L={literal}")
                     assignments[var_id] = literal > 0
-                    output.append(self._show_simplified_clauses(assignments))
+                    simplified = self._show_simplified_clauses(assignments)
+                    if simplified:
+                        output.append(simplified)
             
             elif 'CONFLICT' in step:
                 # The conflict clause is already shown in the previous simplified output
@@ -245,7 +248,8 @@ class SATVisualizer:
                 output.append("")
             
             elif 'BACKTRACK' in step:
-                # Reset some assignments (simplified for visualization)
+                # CRITICAL: Reset assignments to clear the failed branch
+                assignments = {}
                 output.append("")
             
             elif 'SATISFIED' in step:
@@ -253,41 +257,50 @@ class SATVisualizer:
                 output.append("")
         
         return "\n".join(output)
-    
+
+
+     
     def _format_clause(self, literals: List[int], assignments: Dict[int, bool]) -> str:
-        """Format a clause with variable names"""
+        """Format a clause with variable names, returns empty string if satisfied"""
         parts = []
+        
         for lit in literals:
             var_id = abs(lit)
-            var_name = self.variables.get(var_id, f"V{var_id}")
             
-            # Check if assigned - if assigned and makes literal true, clause is satisfied
+            # Check if this variable is assigned
             if var_id in assignments:
                 var_value = assignments[var_id]
+                
+                # Check if this literal makes the clause TRUE
                 if (lit > 0 and var_value) or (lit < 0 and not var_value):
-                    # This literal is TRUE, clause is satisfied - return empty to signal satisfaction
-                    return ""
-                # Literal is FALSE, skip it (don't add to parts)
+                    # Clause is satisfied by this literal
+                    return ""  # Return empty to signal satisfaction
+                # Otherwise, this literal is FALSE, so skip it (don't add to parts)
             else:
-                # Not assigned yet, include in clause
+                # Variable not assigned yet, include literal in clause
+                var_name = self.variables.get(var_id, f"V{var_id}")
                 if lit < 0:
                     parts.append(f"-{var_name}")
                 else:
                     parts.append(var_name)
+        
+        # If no parts left, clause has all false literals (conflict/empty clause)
         return " + ".join(parts) if parts else "0"
 
     def _show_simplified_clauses(self, assignments: Dict[int, bool]) -> str:
         """Show simplified clauses after assignments"""
         result = []
+        
         for clause_id in sorted(self.clauses.keys()):
             literals = self.clauses[clause_id]
             clause_str = self._format_clause(literals, assignments)
             
-            # Empty string means clause is satisfied, don't show it
-            if clause_str != "":
+            # Only show unsatisfied clauses (satisfied ones return empty string)
+            if clause_str:
                 result.append(f"{clause_id} | {clause_str}")
         
-        return "\n".join(result) if result else ""   
+        return "\n".join(result) if result else ""
+
     
     def _format_clause_simple(self, literals: List[int]) -> str:
         """Simple clause formatting"""
