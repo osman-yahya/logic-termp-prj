@@ -11,8 +11,8 @@ from typing import Dict, List, Tuple, Set
 from collections import defaultdict
 
 # For any experiment, below 2 const vars are enough to set.
-FILE_ROOT = "exp_o1"
-TRACE_COUNT = 1
+FILE_ROOT = "exp_4"
+TRACE_COUNT = 3
 
 
 
@@ -106,18 +106,17 @@ class SATVisualizer:
     
     def parse_execution_traces(self, filenames: List[str]):
         """Parse and combine multiple execution trace files from Project #3"""
-        sat_traces = []
-        unsat_traces = []
+        all_traces = []
         
         for filename in filenames:
-            with open(filename, 'r') as f:
-                content = f.read()
+            try:
+                with open(filename, 'r') as f:
+                    content = f.read()
+            except FileNotFoundError:
+                print(f"Warning: {filename} not found, skipping...")
+                continue
             
-            # Check STATUS
-            status_match = re.search(r'STATUS:\s*(SAT|UNSAT|CONTINUE)', content)
-            status = status_match.group(1) if status_match else None
-            
-            # Extract BCP execution log
+            # Extract BCP execution log regardless of status
             log_section = re.search(
                 r'--- BCP EXECUTION LOG.*?---\s*\n(.*?)(?=---|\Z)',
                 content,
@@ -127,6 +126,7 @@ class SATVisualizer:
             if log_section:
                 log_lines = log_section.group(1).strip().split('\n')
                 trace_segment = []
+                
                 for line in log_lines:
                     line = line.strip()
                     if line:
@@ -136,7 +136,7 @@ class SATVisualizer:
                             parts = line.split('|')
                             if len(parts) >= 2:
                                 # Check if there's a clause ID after the pipe
-                                after_pipe = parts[-1].strip()  # Get last part after split
+                                after_pipe = parts[-1].strip()
                                 if after_pipe and after_pipe.startswith('C'):
                                     # Clause-level SATISFIED (e.g., "| C2"), skip it
                                     continue
@@ -145,30 +145,17 @@ class SATVisualizer:
                         else:
                             trace_segment.append(line)
                 
-                # If this is a SAT trace but no formula-level SATISFIED was found, add one
-                if status == 'SAT' and trace_segment:
-                    # Check if there's already a SATISFIED in the trace
-                    has_satisfied = any('SATISFIED' in line for line in trace_segment)
-                    if not has_satisfied:
-                        # Add a synthetic SATISFIED marker
-                        trace_segment.append('[DL1] SATISFIED |')
-                
-                if status == 'SAT':
-                    sat_traces.append(trace_segment)
-                elif status == 'UNSAT':
-                    unsat_traces.append(trace_segment)
-                elif status == 'CONTINUE':
-                    continue
+                # Add this trace segment to all traces
+                if trace_segment:
+                    all_traces.append(trace_segment)
         
-        if sat_traces:
-            self.trace = sat_traces[0]
-        elif unsat_traces:
-            self.trace = []
-            for trace in unsat_traces:
-                self.trace.extend(trace)
-        else:
-            self.trace = []
-
+        # Concatenate all traces sequentially
+        self.trace = []
+        for trace_segment in all_traces:
+            self.trace.extend(trace_segment)
+        
+        if not self.trace:
+            print("Warning: No execution trace found in any file")
 
     def generate_row_form(self) -> str:
         """Generate Row Form visualization"""

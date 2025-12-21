@@ -17,14 +17,16 @@ C1 | -A + -B + C
 C2 | -A + B + D
 C3 | -C + -D
 
+---------- Decision L=1
+C1 | -B + C
+C2 | B + D
+C3 | -C + -D
 ---------- Decision L=2
-C1 | -A + C
+C1 | C
 C3 | -C + -D
 ---------- Unit L=3
 C3 | -D
 ---------- Unit L=-4
-Satisfied
-
 
 ============================================================
 TREE FORM - SEARCH TREE
@@ -32,10 +34,10 @@ TREE FORM - SEARCH TREE
 
 Root
 |
-|----- Decide B = 1
+|----- Decide A = 1
            |
-           |----- Unit C = 1
-           |
-           |----- Unit D = 0
-           |
-           |----- Satisfied!
+           |----- Decide B = 1
+                      |
+                      |----- Unit C = 1
+                      |
+                      |----- Unit D = 0
