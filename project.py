@@ -11,8 +11,8 @@ from typing import Dict, List, Tuple, Set
 from collections import defaultdict
 
 # For any experiment, below 2 const vars are enough to set.
-FILE_ROOT = "exp_4"
-TRACE_COUNT = 3
+FILE_ROOT = "test_case_7_multiple_conflicts"
+TRACE_COUNT = 5
 
 
 
@@ -249,10 +249,11 @@ class SATVisualizer:
         
         # Process trace
         assignments = {}  # Track current assignments
-        
+        assignment_stack = []
         for step in self.trace:
             # Parse different types of steps
             if 'DECIDE' in step:
+                assignment_stack.append(assignments.copy())
                 # Extract literal: [DL1] DECIDE L=2 |
                 match = re.search(r'L=(-?\d+)', step)
                 if match:
@@ -283,12 +284,15 @@ class SATVisualizer:
                     # Append " | Conflict" to the last clause line
                     output[-1] = output[-1] + " | Conflict"
                 output.append("")
-            
+
             elif 'BACKTRACK' in step:
-                # CRITICAL: Reset assignments to clear the failed branch
-                assignments = {}
+                # Hafızayı silmek yerine (assignments = {}), bir önceki duruma dön
+                if assignment_stack:
+                    assignments = assignment_stack.pop()
+                else:
+                    assignments = {} # Stack boşsa (Root level) sıfırla
+                
                 output.append("")
-            
             elif 'SATISFIED' in step:
                 # Only add "Satisfied" once for formula-level satisfaction
                 output.append("Satisfied")
@@ -366,8 +370,13 @@ class SATVisualizer:
         # Track decision level
         decision_level = 0
         in_failed_branch = False
+
+        INDENT_BLOCK = "|          "
         
         for i, step in enumerate(self.trace):
+            dl_match = re.search(r'\[DL(\d+)\]', step)
+            if dl_match:
+                decision_level = int(dl_match.group(1))
             if 'DECIDE' in step:
                 match = re.search(r'L=(-?\d+)', step)
                 if match:
@@ -375,7 +384,6 @@ class SATVisualizer:
                     var_id = abs(literal)
                     var_name = self.variables.get(var_id, f"V{var_id}")
                     value = 1 if literal > 0 else 0
-                    
                     # Check if this decision will lead to conflict
                     will_conflict = False
                     for future_step in self.trace[i+1:]:
@@ -385,7 +393,6 @@ class SATVisualizer:
                         if 'BACKTRACK' in future_step or 'SATISFIED' in future_step:
                             break
                     
-                    decision_level += 1
                     in_failed_branch = will_conflict
                     
                     # Add proper indentation based on decision level
@@ -394,7 +401,7 @@ class SATVisualizer:
                         output.append("|----- Decide {0} = {1}".format(var_name, value))
                     else:
                         # For nested decisions
-                        indent = " " * (11 * (decision_level - 1))
+                        indent = INDENT_BLOCK * (decision_level - 1)
                         output.append(indent + "|")
                         output.append(indent + "|----- Decide {0} = {1}".format(var_name, value))
             
@@ -407,25 +414,25 @@ class SATVisualizer:
                     value = 1 if literal > 0 else 0
                     
                     # Calculate indentation based on decision level
-                    indent = " " * (11 * decision_level)
+                    indent = INDENT_BLOCK * decision_level
                     
-                    if in_failed_branch:
-                        output.append("|          |")
-                        output.append("|          |----- Assign {0} = {1}".format(var_name, value))
-                    else:
-                        output.append(indent + "|")
-                        output.append(indent + "|----- Unit {0} = {1}".format(var_name, value))
+                output.append(indent + "|")
+                output.append(indent + "|----- {0} {1} = {2}".format(
+                    "Assign" if in_failed_branch else "Unit", 
+                    var_name, 
+                    value
+                ))
             
             elif 'CONFLICT' in step:
-                output.append("|          |")
-                output.append("|          |----- Conflict!")
+                indent = INDENT_BLOCK * decision_level
+                output.append(indent + "|")
+                output.append(indent + "|----- Conflict!")
             
             elif 'BACKTRACK' in step:
-                decision_level = 0
                 in_failed_branch = False
             
             elif 'SATISFIED' in step:
-                indent = " " * (11 * decision_level)
+                indent = INDENT_BLOCK * decision_level
                 output.append(indent + "|")
                 output.append(indent + "|----- Satisfied!")
                 break
