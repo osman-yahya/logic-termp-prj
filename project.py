@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple, Set
 from collections import defaultdict
 
 # For any experiment, below 2 const vars are enough to set.
-FILE_ROOT = "test_case_7_multiple_conflicts"
+FILE_ROOT = "test_case_10_multiple_conflicts"
 TRACE_COUNT = 5
 
 
@@ -115,7 +115,9 @@ class SATVisualizer:
             except FileNotFoundError:
                 print(f"Warning: {filename} not found, skipping...")
                 continue
-            
+
+            status_match = re.search(r'STATUS:\s*(SAT|UNSAT|CONTINUE)', content)
+            file_status = status_match.group(1) if status_match else None
             # Extract BCP execution log regardless of status
             log_section = re.search(
                 r'--- BCP EXECUTION LOG.*?---\s*\n(.*?)(?=---|\Z)',
@@ -144,6 +146,10 @@ class SATVisualizer:
                             trace_segment.append(line)
                         else:
                             trace_segment.append(line)
+                if file_status == 'SAT':
+                    has_satisfied_log = any('SATISFIED' in line for line in trace_segment)
+                    if not has_satisfied_log:
+                        trace_segment.append("SATISFIED")
                 
                 # Add this trace segment to all traces
                 if trace_segment:
