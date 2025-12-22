@@ -59,7 +59,7 @@ class SATVisualizer:
         
         # Extract clauses
         clause_section = re.search(
-            r'--- 3\. CLAUSE LIST.*?---\s*\n\[C_ID\].*?\n-+\n(.*?)(?=---|\Z)', 
+            r'--- (?:3\. )?CLAUSE LIST.*?---\s*\n(?:\[C_ID\].*?\n-+\n)?(.*?)(?=---|\Z)', 
             content, 
             re.DOTALL
         )
@@ -153,6 +153,20 @@ class SATVisualizer:
         self.trace = []
         for trace_segment in all_traces:
             self.trace.extend(trace_segment)
+
+        # Check for SAT status in any of the files to manually append SATISFIED if missing
+        is_sat = False
+        for filename in filenames:
+            try:
+                with open(filename, 'r') as f:
+                    if 'STATUS: SAT' in f.read():
+                        is_sat = True
+                        break
+            except:
+                pass
+        
+        if is_sat and (not self.trace or 'SATISFIED' not in self.trace[-1]):
+             self.trace.append("SATISFIED")
         
         if not self.trace:
             print("Warning: No execution trace found in any file")
