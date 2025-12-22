@@ -32,9 +32,7 @@ C3 | 0 | Conflict
 
 ---------- Decision L=-1
 C1 | B
-C4 | -C
 ---------- Unit L=2
-C4 | -C
 Satisfied
 
 
@@ -53,7 +51,7 @@ Root
 |          |----- Conflict!
 |
 |----- Decide A = 0
-           |
-           |----- Unit B = 1
-           |
-           |----- Satisfied!
+|          |
+|          |----- Unit B = 1
+|          |
+|          |----- Satisfied!

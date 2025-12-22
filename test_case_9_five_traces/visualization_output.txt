@@ -27,24 +27,32 @@ C6 | B + -C + E
 C7 | -D + -E
 C8 | C + D
 
----------- Decision L=-4
-C1 | A + B
-C2 | -A + C
-C3 | -B + -C
-C5 | A + -B + -E
+---------- Decision L=1
+C2 | C
+C3 | -B + -C + D
+C4 | -D + E
 C6 | B + -C + E
-C8 | C
----------- Unit L=-2
-C1 | A
-C2 | -A + C
-C6 | -C + E
-C8 | C
+C7 | -D + -E
+C8 | C + D
+---------- Unit L=3
+C3 | -B + D
+C4 | -D + E
+C6 | B + E
+C7 | -D + -E
+---------- Decision L=4
+C4 | E
+C6 | B + E
+C7 | -E
 ---------- Unit L=5
-C1 | A
-C2 | -A + C
-C8 | C
-Satisfied
+C7 | 0 | Conflict
 
+
+---------- Decision L=-4
+C3 | -B
+C6 | B + E
+---------- Unit L=-2
+C6 | E
+---------- Unit L=5
 
 ============================================================
 TREE FORM - SEARCH TREE
@@ -52,10 +60,18 @@ TREE FORM - SEARCH TREE
 
 Root
 |
-|----- Decide D = 0
-           |
-           |----- Unit B = 0
-           |
-           |----- Unit E = 1
-           |
-           |----- Satisfied!
+|----- Decide A = 1
+|          |
+|          |----- Assign C = 1
+|          |
+|          |----- Decide D = 1
+|          |          |
+|          |          |----- Assign E = 1
+|          |          |
+|          |          |----- Conflict!
+|          |
+|          |----- Decide D = 0
+|          |          |
+|          |          |----- Unit B = 0
+|          |          |
+|          |          |----- Unit E = 1
