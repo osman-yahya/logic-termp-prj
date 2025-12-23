@@ -59,7 +59,7 @@ class SATVisualizer:
         
         # Extract clauses
         clause_section = re.search(
-            r'--- 3\. CLAUSE LIST.*?---\s*\n\[C_ID\].*?\n-+\n(.*?)(?=---|\Z)', 
+            r'--- (?:3\. )?CLAUSE LIST.*?---\s*\n(?:\[C_ID\].*?\n-+\n)?(.*?)(?=---|\Z)', 
             content, 
             re.DOTALL
         )
@@ -460,8 +460,8 @@ class SATVisualizer:
         self.parse_final_model(model_file)
         
         if not self.model:
-            print("Error: Failed to parse model. Aborting.")
-            return
+            print("Warning: No model found (possibly UNSAT). Proceeding with traces...")
+
         
         print("Parsing execution traces...")
         self.parse_execution_traces(trace_files)
