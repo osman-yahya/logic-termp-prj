@@ -1,0 +1,43 @@
+Error: No model available (formula may be UNSAT)
+
+============================================================
+INFERENCE FORM - LOGICAL TRACE
+============================================================
+
+C1 | A + B
+C2 | -A + B
+C3 | A + -B
+C4 | -A + -B
+
+---------- Decision L=1
+C2 | B
+C4 | -B
+---------- Unit L=2
+C4 | 0 | Conflict
+
+
+---------- Decision L=-1
+C1 | B
+C3 | -B
+---------- Unit L=2
+C3 | 0 | Conflict
+
+
+
+============================================================
+TREE FORM - SEARCH TREE
+============================================================
+
+Root
+|
+|----- Decide A = 1
+|          |
+|          |----- Assign B = 1
+|          |
+|          |----- Conflict!
+|
+|----- Decide A = 0
+|          |
+|          |----- Assign B = 1
+|          |
+|          |----- Conflict!

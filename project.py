@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple, Set
 from collections import defaultdict
 
 # For any experiment, below 2 const vars are enough to set.
-FILE_ROOT = "test_case_10_multiple_conflicts"
+FILE_ROOT = "test_case_9_four_traces"
 TRACE_COUNT = 5
 
 
@@ -19,7 +19,7 @@ TRACE_COUNT = 5
 
 CNF_FILE = FILE_ROOT + "/initial_cnf.txt"
 MODEL_FILE = FILE_ROOT + "/final_model.txt"
-TRACE_FILES = [FILE_ROOT+f"/execution_trace{x}.txt" for x in range(1,TRACE_COUNT+1) ]  
+TRACE_FILES = [FILE_ROOT+f"/execution_trace_{x}.txt" for x in range(0,TRACE_COUNT) ]  
 OUTPUT_FILE = FILE_ROOT + "/visualization_output.txt"
 
 """ 
